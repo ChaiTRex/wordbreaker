@@ -30,6 +30,9 @@ impl Dictionary<Vec<u8>> {
     /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
     /// from an <code>[Iterator](core::iter::Iterator)</code> over strings.
+    ///
+    /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
+    /// concatenate to "arrowbox".
     pub fn from_iter<I, S>(words: I) -> fst::Result<Self>
     where
         I: Iterator<Item = S>,
@@ -54,6 +57,9 @@ impl Dictionary<Vec<u8>> {
     /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
     /// from its <code>words</code>.
+    ///
+    /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
+    /// concatenate to "arrowbox".
     pub fn new<S>(words: &[S]) -> fst::Result<Self>
     where
         S: AsRef<str>,
@@ -122,6 +128,9 @@ where
     /// Finds all concatenations of words in this
     /// <code>[Dictionary](crate::Dictionary)</code> that produce the <code>input</code>
     /// string.
+    ///
+    /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
+    /// concatenate to "arrowbox".
     ///
     /// # Examples
     ///
