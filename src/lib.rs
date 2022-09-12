@@ -64,7 +64,7 @@ where
     /// Finds all concatenations of dictionary words that produce the `input` string.
     ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use wordbreaker::Dictionary;
     ///
@@ -75,23 +75,20 @@ where
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn concatenations_for(&self, input: &str) -> Vec<Vec<String>> {
-        fn _concatenations_for<D, S>(
+        fn _concatenations_for<'a, D, I>(
             dictionary: &Fst<D>,
-            graphemes: &[S],
+            mut graphemes: I,
+            last_grapheme_index: usize,
             prefix: &mut Vec<String>,
             results: &mut Vec<Vec<String>>,
         ) where
             D: AsRef<[u8]>,
-            S: AsRef<str>,
+            I: Clone + Iterator<Item = (usize, &'a str)>,
         {
             prefix.push(String::new());
             let mut current_node = dictionary.root();
 
-            'outer: for (i, grapheme) in graphemes
-                .iter()
-                .map(|grapheme| grapheme.as_ref())
-                .enumerate()
-            {
+            'outer: while let Some((i, grapheme)) = graphemes.next() {
                 prefix.last_mut().unwrap().push_str(grapheme);
 
                 for byte in grapheme.bytes() {
@@ -103,10 +100,16 @@ where
                 }
 
                 if current_node.is_final() {
-                    if i == graphemes.len() - 1 {
+                    if i == last_grapheme_index {
                         results.push(prefix.clone());
                     } else {
-                        _concatenations_for(dictionary, &graphemes[i + 1..], prefix, results);
+                        _concatenations_for(
+                            dictionary,
+                            graphemes.clone(),
+                            last_grapheme_index,
+                            prefix,
+                            results,
+                        );
                     }
                 }
             }
@@ -119,10 +122,18 @@ where
         }
 
         let input = input.chars().nfd().collect::<String>();
-        let graphemes = input.graphemes(true).collect::<Vec<_>>();
+        let graphemes = input.graphemes(true);
+        let last_grapheme_index = graphemes.clone().count().wrapping_sub(1);
+        let graphemes = graphemes.enumerate();
         let mut results = Vec::new();
 
-        _concatenations_for(&self.fst, &graphemes, &mut Vec::new(), &mut results);
+        _concatenations_for(
+            &self.fst,
+            graphemes,
+            last_grapheme_index,
+            &mut Vec::new(),
+            &mut results,
+        );
 
         results
     }
