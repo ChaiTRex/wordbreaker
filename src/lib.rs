@@ -1,7 +1,24 @@
+/*!
+`wordbreaker` is a `no_std` crate (requires [`alloc`](alloc)) that rapidly finds all
+concatenations of words in a dictionary that produce a certain input string.
+*/
+
+#![no_std]
+
+#[macro_use]
+extern crate alloc;
+
+use alloc::string::String;
+use alloc::vec::Vec;
 use fst::raw::Fst;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Stores all the words in a dictionary for speedy concatenation finding. Canonicalizes
+/// the Unicode to NFD form.
+///
+/// `D` is the backing storage for the dictionary, which must implement
+/// <code>[AsRef](core::convert::AsRef)&lt;&#91;[u8](core::primitive::u8)&#93;&gt;</code>.
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct Dictionary<D> {
@@ -9,6 +26,10 @@ pub struct Dictionary<D> {
 }
 
 impl<'a> Dictionary<Vec<u8>> {
+    /// Makes a new
+    /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
+    /// from an <code>[Iterator](core::iter::Iterator)</code> over
+    /// <code>&amp;&#91;[str](core::primitive::str)&#93;</code>s.
     pub fn from_iter<I>(words: I) -> fst::Result<Self>
     where
         I: Iterator<Item = &'a str>,
@@ -25,6 +46,9 @@ impl<'a> Dictionary<Vec<u8>> {
 }
 
 impl Dictionary<Vec<u8>> {
+    /// Makes a new
+    /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
+    /// from a slice of strings.
     pub fn new<T>(words: &[T]) -> fst::Result<Self>
     where
         T: AsRef<str>,
@@ -37,7 +61,20 @@ impl<D> Dictionary<D>
 where
     D: AsRef<[u8]>,
 {
-    pub fn concatenations_for(&self, word: &str) -> Vec<Vec<String>> {
+    /// Finds all concatenations of dictionary words that produce the `input` string.
+    ///
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use wordbreaker::Dictionary;
+    ///
+    /// let dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
+    /// ways_to_concatenate.sort_unstable();
+    ///
+    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// ```
+    pub fn concatenations_for(&self, input: &str) -> Vec<Vec<String>> {
         fn _concatenations_for<D, S>(
             dictionary: &Fst<D>,
             graphemes: &[S],
@@ -77,12 +114,12 @@ where
             prefix.pop();
         }
 
-        if word.is_empty() {
+        if input.is_empty() {
             return vec![Vec::new()];
         }
 
-        let word = word.chars().nfd().collect::<String>();
-        let graphemes = word.graphemes(true).collect::<Vec<_>>();
+        let input = input.chars().nfd().collect::<String>();
+        let graphemes = input.graphemes(true).collect::<Vec<_>>();
         let mut results = Vec::new();
 
         _concatenations_for(&self.fst, &graphemes, &mut Vec::new(), &mut results);
