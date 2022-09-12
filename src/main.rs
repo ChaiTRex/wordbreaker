@@ -53,13 +53,14 @@ fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<
         prefix.pop();
     }
 
-    let graphemes = word.graphemes(true).collect::<Vec<_>>();
-    if graphemes.is_empty() {
+    if word.is_empty() {
         return Vec::new();
     }
-
+    
     let mut results = Vec::new();
     let mut prefix = Vec::new();
+    let word = word.chars().nfd().collect::<String>();
+    let graphemes = word.graphemes(true).collect::<Vec<_>>();
     let root = dictionary.root();
 
     _break_into_words(&mut results, &mut prefix, &graphemes, dictionary, root);
