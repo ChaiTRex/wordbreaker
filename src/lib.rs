@@ -2,7 +2,10 @@ use fst::raw::{Fst, Node};
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-fn create_dictionary_fst<T: AsRef<str>>(words: &[T]) -> fst::Result<Fst<Vec<u8>>> {
+pub fn load_dictionary<T>(words: &[T]) -> fst::Result<Fst<Vec<u8>>>
+where
+    T: AsRef<str>,
+{
     let mut words = words
         .iter()
         .map(|word| word.as_ref())
@@ -15,14 +18,20 @@ fn create_dictionary_fst<T: AsRef<str>>(words: &[T]) -> fst::Result<Fst<Vec<u8>>
     Fst::from_iter_set(words.iter())
 }
 
-fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<String>> {
-    fn _break_into_words<D: AsRef<[u8]>, S: AsRef<str>>(
+pub fn break_into_words<D>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<String>>
+where
+    D: AsRef<[u8]>,
+{
+    fn _break_into_words<D, S>(
         results: &mut Vec<Vec<String>>,
         prefix: &mut Vec<String>,
         graphemes: &[S],
         dictionary: &Fst<D>,
         root: Node<'_>,
-    ) {
+    ) where
+        D: AsRef<[u8]>,
+        S: AsRef<str>,
+    {
         prefix.push(String::new());
         let mut current_node = root;
 
@@ -54,7 +63,7 @@ fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<
     }
 
     if word.is_empty() {
-        return Vec::new();
+        return vec![Vec::new()];
     }
 
     let mut results = Vec::new();
@@ -68,9 +77,41 @@ fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<
     results
 }
 
-fn main() {
-    let dictionary =
-        create_dictionary_fst(&["ab", "abc", "cd", "def", "abcd", "ef", "c", ""]).unwrap();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    dbg!(break_into_words("abcdef", &dictionary));
+    #[test]
+    fn test_1() {
+        let dictionary = load_dictionary(&["b"]).unwrap();
+        let ways_to_concatenate = break_into_words("a", &dictionary);
+
+        assert!(ways_to_concatenate.is_empty());
+    }
+
+    #[test]
+    fn test_2() {
+        let dictionary = load_dictionary(&["b"]).unwrap();
+        let ways_to_concatenate = break_into_words("", &dictionary);
+
+        assert!(ways_to_concatenate.len() == 1);
+        assert!(ways_to_concatenate[0].is_empty());
+    }
+
+    #[test]
+    fn test_3() {
+        let dictionary = load_dictionary(&["ab", "abc", "cd", "def", "abcd", "ef", "c"]).unwrap();
+        let mut ways_to_concatenate = break_into_words("abcdef", &dictionary);
+        ways_to_concatenate.sort_unstable();
+
+        assert_eq!(
+            ways_to_concatenate,
+            [
+                vec!["ab", "c", "def"],
+                vec!["ab", "cd", "ef"],
+                vec!["abc", "def"],
+                vec!["abcd", "ef"]
+            ]
+        );
+    }
 }
