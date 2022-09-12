@@ -56,7 +56,7 @@ fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<
     if word.is_empty() {
         return Vec::new();
     }
-    
+
     let mut results = Vec::new();
     let mut prefix = Vec::new();
     let word = word.chars().nfd().collect::<String>();
@@ -69,7 +69,8 @@ fn break_into_words<D: AsRef<[u8]>>(word: &str, dictionary: &Fst<D>) -> Vec<Vec<
 }
 
 fn main() {
-    let dictionary = create_dictionary_fst(&["ab", "abc", "cd", "def", "abcd", "ef", "c"]).unwrap();
+    let dictionary =
+        create_dictionary_fst(&["ab", "abc", "cd", "def", "abcd", "ef", "c", ""]).unwrap();
 
     dbg!(break_into_words("abcdef", &dictionary));
 }
