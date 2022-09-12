@@ -26,35 +26,39 @@ pub struct Dictionary<D> {
     fst: Fst<D>,
 }
 
-impl<'a> Dictionary<Vec<u8>> {
+impl Dictionary<Vec<u8>> {
     /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
-    /// from an <code>[Iterator](core::iter::Iterator)</code> over
-    /// <code>&amp;[str](core::primitive::str)</code>s.
-    pub fn from_iter<I>(words: I) -> fst::Result<Self>
+    /// from an <code>[Iterator](core::iter::Iterator)</code> over strings.
+    pub fn from_iter<I, S>(words: I) -> fst::Result<Self>
     where
-        I: Iterator<Item = &'a str>,
+        I: Iterator<Item = S>,
+        S: AsRef<str>,
     {
         let mut words = words
-            .filter(|word| !word.is_empty())
-            .map(|word| word.chars().nfd().collect::<String>())
+            .filter_map(|word| {
+                let word = word.as_ref();
+                if word.is_empty() {
+                    None
+                } else {
+                    Some(word.chars().nfd().collect::<String>())
+                }
+            })
             .collect::<Vec<_>>();
         words.sort_unstable_by(|word1, word2| word1.as_bytes().cmp(word2.as_bytes()));
         words.dedup();
 
         Fst::from_iter_set(words.into_iter()).map(|fst| Dictionary { fst })
     }
-}
 
-impl Dictionary<Vec<u8>> {
     /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
     /// from its <code>words</code>.
-    pub fn new<T>(words: &[T]) -> fst::Result<Self>
+    pub fn new<S>(words: &[S]) -> fst::Result<Self>
     where
-        T: AsRef<str>,
+        S: AsRef<str>,
     {
-        Self::from_iter(words.iter().map(|word| word.as_ref()))
+        Self::from_iter(words.iter())
     }
 }
 
