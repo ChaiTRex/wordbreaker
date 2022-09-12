@@ -1,6 +1,7 @@
 /*!
-`wordbreaker` is a `no_std` crate (requires [`alloc`](alloc)) that rapidly finds all
-concatenations of words in a dictionary that produce a certain input string.
+<code>wordbreaker</code> is a Unicode-aware <code>no_std</code> crate (requires
+<code>[alloc](alloc)</code>) that rapidly finds all concatenations of words in a
+dictionary that produce a certain input string.
 */
 
 #![no_std]
@@ -17,7 +18,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Stores all the words in a dictionary for speedy concatenation finding. Canonicalizes
 /// the Unicode to NFD form.
 ///
-/// `D` is the backing storage for the dictionary, which must implement
+/// <code>D</code> is the backing storage for the dictionary, which must implement
 /// <code>[AsRef](core::convert::AsRef)&lt;&#91;[u8](core::primitive::u8)&#93;&gt;</code>.
 #[derive(Clone)]
 #[repr(transparent)]
@@ -26,10 +27,10 @@ pub struct Dictionary<D> {
 }
 
 impl<'a> Dictionary<Vec<u8>> {
-    /// Makes a new
+    /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
     /// from an <code>[Iterator](core::iter::Iterator)</code> over
-    /// <code>&amp;&#91;[str](core::primitive::str)&#93;</code>s.
+    /// <code>&amp;[str](core::primitive::str)</code>s.
     pub fn from_iter<I>(words: I) -> fst::Result<Self>
     where
         I: Iterator<Item = &'a str>,
@@ -46,9 +47,9 @@ impl<'a> Dictionary<Vec<u8>> {
 }
 
 impl Dictionary<Vec<u8>> {
-    /// Makes a new
+    /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
-    /// from a slice of strings.
+    /// from its <code>words</code>.
     pub fn new<T>(words: &[T]) -> fst::Result<Self>
     where
         T: AsRef<str>,
@@ -61,7 +62,9 @@ impl<D> Dictionary<D>
 where
     D: AsRef<[u8]>,
 {
-    /// Finds all concatenations of dictionary words that produce the `input` string.
+    /// Finds all concatenations of words in this
+    /// <code>[Dictionary](crate::Dictionary)</code> that produce the <code>input</code>
+    /// string.
     ///
     /// # Examples
     ///
