@@ -15,7 +15,7 @@ use fst::raw::Fst;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Stores all the words in a dictionary for speedy concatenation finding. Canonicalizes
+/// Stores a dictionary's words so that concatenation finding is speedy. Canonicalizes
 /// the Unicode to NFD form.
 ///
 /// <code>D</code> is the backing storage for the dictionary, which must implement
@@ -62,6 +62,59 @@ impl<D> Dictionary<D>
 where
     D: AsRef<[u8]>,
 {
+    /// Gets the underlying bytes of a <code>[Dictionary](crate::Dictionary)</code> so
+    /// that they can be stored (for example, on disk) and later loaded (for example,
+    /// using <code>[include_bytes!](core::include_bytes)</code>) to recreate the
+    /// <code>[Dictionary](crate::Dictionary)</code> using
+    /// <code>[Dictionary](crate::Dictionary)::[from_bytes](crate::Dictionary::from_bytes)</code>.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use wordbreaker::Dictionary;
+    ///
+    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
+    ///
+    /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
+    /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
+    /// ways_to_concatenate.sort_unstable();
+    ///
+    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// ```
+    pub fn as_bytes(&self) -> &[u8] {
+        self.fst.as_bytes()
+    }
+
+    /// Creates a new <code>[Dictionary](crate::Dictionary)</code> from the underlying
+    /// bytes of a prior <code>[Dictionary](crate::Dictionary)</code>, which can be
+    /// produced by
+    /// <code>[Dictionary](crate::Dictionary)::[as_bytes](crate::Dictionary::as_bytes)</code>.
+    /// This avoids the expense of processing a lot of words to create a
+    /// <code>[Dictionary](crate::Dictionary)</code>, as they were already processed
+    /// when the prior <code>[Dictionary](crate::Dictionary)</code> was created.
+    ///
+    /// This can be used in conjuction with loading the bytes from disk (perhaps by
+    /// using <code>[include_bytes!](core::include_bytes)</code>).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use wordbreaker::Dictionary;
+    ///
+    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
+    ///
+    /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
+    /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
+    /// ways_to_concatenate.sort_unstable();
+    ///
+    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// ```
+    pub fn from_bytes(bytes: D) -> fst::Result<Dictionary<D>> {
+        Fst::new(bytes).map(|fst| Dictionary { fst })
+    }
+
     /// Finds all concatenations of words in this
     /// <code>[Dictionary](crate::Dictionary)</code> that produce the <code>input</code>
     /// string.
