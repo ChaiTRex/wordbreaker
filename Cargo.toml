@@ -1,6 +1,6 @@
 [package]
 name = "wordbreaker"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 description = """
 A no_std with alloc crate that rapidly finds all concatenations of words in a dictionary
