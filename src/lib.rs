@@ -11,7 +11,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use fst::raw::Fst;
+use fst::raw::{Fst, Node};
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -152,65 +152,71 @@ where
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn concatenations_for(&self, input: &str) -> Vec<Vec<String>> {
-        fn _concatenations_for<'a, D, I>(
-            dictionary: &Fst<D>,
-            mut graphemes: I,
-            last_grapheme_index: usize,
-            prefix: &mut Vec<String>,
-            results: &mut Vec<Vec<String>>,
-        ) where
-            D: AsRef<[u8]>,
-            I: Clone + Iterator<Item = (usize, &'a str)>,
-        {
-            prefix.push(String::new());
-            let mut current_node = dictionary.root();
-
-            'outer: while let Some((i, grapheme)) = graphemes.next() {
-                prefix.last_mut().unwrap().push_str(grapheme);
-
-                for byte in grapheme.bytes() {
-                    let transition_index = match current_node.find_input(byte) {
-                        Some(index) => index,
-                        None => break 'outer,
-                    };
-                    current_node = dictionary.node(current_node.transition(transition_index).addr);
-                }
-
-                if current_node.is_final() {
-                    if i == last_grapheme_index {
-                        results.push(prefix.clone());
-                    } else {
-                        _concatenations_for(
-                            dictionary,
-                            graphemes.clone(),
-                            last_grapheme_index,
-                            prefix,
-                            results,
-                        );
-                    }
-                }
-            }
-
-            prefix.pop();
-        }
-
         if input.is_empty() {
             return vec![Vec::new()];
         }
 
+        let dictionary = &self.fst;
         let input = input.chars().nfd().collect::<String>();
         let graphemes = input.graphemes(true);
         let last_grapheme_index = graphemes.clone().count().wrapping_sub(1);
-        let graphemes = graphemes.enumerate();
+        let mut prefix = vec![String::new()];
         let mut results = Vec::new();
 
-        _concatenations_for(
-            &self.fst,
-            graphemes,
-            last_grapheme_index,
-            &mut Vec::new(),
-            &mut results,
-        );
+        struct StackFrame<'s, 'n, I>
+        where
+            I: Clone + Iterator<Item = (usize, &'s str)>,
+        {
+            graphemes: I,
+            current_node: Node<'n>,
+        }
+
+        let mut stack = vec![StackFrame {
+            graphemes: graphemes.enumerate(),
+            current_node: dictionary.root(),
+        }];
+        'outer: loop {
+            match stack.pop() {
+                Some(mut stack_frame) => {
+                    if let Some((i, grapheme)) = stack_frame.graphemes.next() {
+                        prefix.last_mut().unwrap().push_str(grapheme);
+
+                        for byte in grapheme.bytes() {
+                            let transition_index = match stack_frame.current_node.find_input(byte) {
+                                Some(index) => index,
+                                None => {
+                                    prefix.pop();
+                                    continue 'outer;
+                                }
+                            };
+                            stack_frame.current_node = dictionary
+                                .node(stack_frame.current_node.transition(transition_index).addr);
+                        }
+
+                        if stack_frame.current_node.is_final() {
+                            if i == last_grapheme_index {
+                                results.push(prefix.clone());
+                                prefix.pop();
+                            } else {
+                                prefix.push(String::new());
+
+                                let graphemes_clone = stack_frame.graphemes.clone();
+                                stack.push(stack_frame);
+                                stack.push(StackFrame {
+                                    graphemes: graphemes_clone,
+                                    current_node: dictionary.root(),
+                                });
+                            }
+                        } else {
+                            stack.push(stack_frame);
+                        }
+                    } else {
+                        prefix.pop();
+                    }
+                }
+                None => break,
+            }
+        }
 
         results
     }
