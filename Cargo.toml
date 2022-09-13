@@ -16,5 +16,5 @@ categories = ["no-std", "text-processing"]
 
 [dependencies]
 fst = "0.4"
-unicode-normalization = { version = "0.1.20", default-features = false }
-unicode-segmentation = "1.9.0"
+unicode-normalization = { version = "0.1.21", default-features = false }
+unicode-segmentation = "1.10.0"
