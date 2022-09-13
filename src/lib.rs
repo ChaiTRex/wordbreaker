@@ -29,42 +29,15 @@ pub struct Dictionary<D> {
 impl Dictionary<Vec<u8>> {
     /// Creates a new
     /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
-    /// from an <code>[Iterator](core::iter::Iterator)</code> over strings.
-    ///
-    /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
-    /// concatenate to "arrowbox".
-    pub fn from_iter<I, S>(words: I) -> fst::Result<Self>
-    where
-        I: Iterator<Item = S>,
-        S: AsRef<str>,
-    {
-        let mut words = words
-            .filter_map(|word| {
-                let word = word.as_ref();
-                if word.is_empty() {
-                    None
-                } else {
-                    Some(word.chars().nfd().collect::<String>())
-                }
-            })
-            .collect::<Vec<_>>();
-        words.sort_unstable_by(|word1, word2| word1.as_bytes().cmp(word2.as_bytes()));
-        words.dedup();
-
-        Fst::from_iter_set(words.into_iter()).map(|fst| Dictionary { fst })
-    }
-
-    /// Creates a new
-    /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
     /// from its <code>words</code>.
     ///
     /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
     /// concatenate to "arrowbox".
-    pub fn new<S>(words: &[S]) -> fst::Result<Self>
+    pub fn new<S>(words: &[S]) -> Self
     where
         S: AsRef<str>,
     {
-        Self::from_iter(words.iter())
+        words.iter().collect()
     }
 }
 
@@ -87,13 +60,13 @@ where
     /// ```rust
     /// use wordbreaker::Dictionary;
     ///
-    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
     /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
     ///
     /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
     /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
-    /// ways_to_concatenate.sort_unstable();
     ///
+    /// ways_to_concatenate.sort_unstable();
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn as_bytes(&self) -> &[u8] {
@@ -120,13 +93,13 @@ where
     /// ```rust
     /// use wordbreaker::Dictionary;
     ///
-    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
     /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
     ///
     /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
     /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
-    /// ways_to_concatenate.sort_unstable();
     ///
+    /// ways_to_concatenate.sort_unstable();
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn from_bytes(bytes: D) -> fst::Result<Dictionary<D>> {
@@ -145,10 +118,10 @@ where
     /// ```rust
     /// use wordbreaker::Dictionary;
     ///
-    /// let dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]).unwrap();
+    /// let dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
     /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
-    /// ways_to_concatenate.sort_unstable();
     ///
+    /// ways_to_concatenate.sort_unstable();
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn concatenations_for(&self, input: &str) -> Vec<Vec<String>> {
@@ -175,55 +148,98 @@ where
             graphemes: graphemes.enumerate(),
             current_node: dictionary.root(),
         }];
-        'outer: loop {
-            match stack.pop() {
-                Some(mut stack_frame) => {
-                    if let Some((i, grapheme)) = stack_frame.graphemes.next() {
-                        prefix.last_mut().unwrap().push_str(grapheme);
+        'outer: while let Some(mut stack_frame) = stack.pop() {
+            if let Some((i, grapheme)) = stack_frame.graphemes.next() {
+                prefix.last_mut().unwrap().push_str(grapheme);
 
-                        for byte in grapheme.bytes() {
-                            let transition_index = match stack_frame.current_node.find_input(byte) {
-                                Some(index) => index,
-                                None => {
-                                    prefix.pop();
-                                    continue 'outer;
-                                }
-                            };
-                            stack_frame.current_node = dictionary
-                                .node(stack_frame.current_node.transition(transition_index).addr);
+                for byte in grapheme.bytes() {
+                    let transition_index = match stack_frame.current_node.find_input(byte) {
+                        Some(index) => index,
+                        None => {
+                            prefix.pop();
+                            continue 'outer;
                         }
+                    };
+                    stack_frame.current_node =
+                        dictionary.node(stack_frame.current_node.transition(transition_index).addr);
+                }
 
-                        if stack_frame.current_node.is_final() {
-                            if i == last_grapheme_index {
-                                if stack.is_empty() {
-                                    results.push(prefix);
-                                    return results;
-                                } else {
-                                    results.push(prefix.clone());
-                                    prefix.pop();
-                                }
-                            } else {
-                                prefix.push(String::new());
-
-                                let graphemes_clone = stack_frame.graphemes.clone();
-                                stack.push(stack_frame);
-                                stack.push(StackFrame {
-                                    graphemes: graphemes_clone,
-                                    current_node: dictionary.root(),
-                                });
-                            }
+                if stack_frame.current_node.is_final() {
+                    if i == last_grapheme_index {
+                        if stack.is_empty() {
+                            results.push(prefix);
+                            return results;
                         } else {
-                            stack.push(stack_frame);
+                            results.push(prefix.clone());
+                            prefix.pop();
                         }
                     } else {
-                        prefix.pop();
+                        prefix.push(String::new());
+
+                        let graphemes_clone = stack_frame.graphemes.clone();
+                        stack.push(stack_frame);
+                        stack.push(StackFrame {
+                            graphemes: graphemes_clone,
+                            current_node: dictionary.root(),
+                        });
                     }
+                } else {
+                    stack.push(stack_frame);
                 }
-                None => break,
+            } else {
+                prefix.pop();
             }
         }
 
         results
+    }
+}
+
+impl<S> core::iter::FromIterator<S> for Dictionary<Vec<u8>>
+where
+    S: AsRef<str>,
+{
+    /// Creates a new
+    /// <code>[Dictionary](crate::Dictionary)&lt;[Vec](alloc::vec::Vec)&lt;[u8](core::primitive::u8)&gt;&gt;</code>
+    /// from an <code>[Iterator](core::iter::Iterator)</code> over strings.
+    ///
+    /// Note: capitalization is preserved, so the words "Arrow" and "box" will not
+    /// concatenate to "arrowbox".
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use wordbreaker::Dictionary;
+    ///
+    /// let dictionary = ["hello", "just", "ice", "justice"]
+    ///     .iter()
+    ///     .collect::<Dictionary<_>>();
+    /// let mut ways_to_concatenate = dictionary.concatenations_for("justice");
+    ///
+    /// ways_to_concatenate.sort_unstable();
+    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// ```
+    fn from_iter<T>(words: T) -> Self
+    where
+        T: IntoIterator<Item = S>,
+    {
+        let mut words = words
+            .into_iter()
+            .filter_map(|word| {
+                let word = word.as_ref();
+                if word.is_empty() {
+                    None
+                } else {
+                    Some(word.chars().nfd().collect::<String>())
+                }
+            })
+            .collect::<Vec<_>>();
+        words.sort_unstable_by(|word1, word2| word1.as_bytes().cmp(word2.as_bytes()));
+        words.dedup();
+
+        Dictionary {
+            fst: Fst::from_iter_set(words.into_iter()).unwrap(),
+        }
     }
 }
 
@@ -233,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_1() {
-        let dictionary = Dictionary::new(&["b"]).unwrap();
+        let dictionary = Dictionary::new(&["b"]);
         let ways_to_concatenate = dictionary.concatenations_for("a");
 
         assert!(ways_to_concatenate.is_empty());
@@ -241,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_2() {
-        let dictionary = Dictionary::new(&["b"]).unwrap();
+        let dictionary = Dictionary::new(&["b"]);
         let ways_to_concatenate = dictionary.concatenations_for("");
 
         assert!(ways_to_concatenate.len() == 1);
@@ -250,10 +266,10 @@ mod tests {
 
     #[test]
     fn test_3() {
-        let dictionary = Dictionary::new(&["ab", "abc", "cd", "def", "abcd", "ef", "c"]).unwrap();
+        let dictionary = Dictionary::new(&["ab", "abc", "cd", "def", "abcd", "ef", "c"]);
         let mut ways_to_concatenate = dictionary.concatenations_for("abcdef");
-        ways_to_concatenate.sort_unstable();
 
+        ways_to_concatenate.sort_unstable();
         assert_eq!(
             ways_to_concatenate,
             [
