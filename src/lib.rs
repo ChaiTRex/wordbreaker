@@ -78,6 +78,10 @@ where
     /// <code>[Dictionary](crate::Dictionary)</code> using
     /// <code>[Dictionary](crate::Dictionary)::[from_bytes](crate::Dictionary::from_bytes)</code>.
     ///
+    /// Note: the byte format of the <code>[Dictionary](crate::Dictionary)</code> may
+    /// change on major updates of this library, requiring the bytes of a
+    /// <code>[Dictionary](crate::Dictionary)</code> to be regenerated in the new format.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -106,6 +110,10 @@ where
     ///
     /// This can be used in conjuction with loading the bytes from disk (perhaps by
     /// using <code>[include_bytes!](core::include_bytes)</code>).
+    ///
+    /// Note: the byte format of the <code>[Dictionary](crate::Dictionary)</code> may
+    /// change on major updates of this library, requiring the bytes of a
+    /// <code>[Dictionary](crate::Dictionary)</code> to be regenerated in the new format.
     ///
     /// # Examples
     ///
