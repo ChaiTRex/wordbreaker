@@ -195,8 +195,13 @@ where
 
                         if stack_frame.current_node.is_final() {
                             if i == last_grapheme_index {
-                                results.push(prefix.clone());
-                                prefix.pop();
+                                if stack.is_empty() {
+                                    results.push(prefix);
+                                    return results;
+                                } else {
+                                    results.push(prefix.clone());
+                                    prefix.pop();
+                                }
                             } else {
                                 prefix.push(String::new());
 
