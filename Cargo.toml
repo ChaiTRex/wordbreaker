@@ -3,8 +3,8 @@ name = "wordbreaker"
 version = "0.2.0"
 edition = "2018"
 description = """
-A Unicode-aware no_std crate (requires alloc) that rapidly finds all concatenations of
-words in a dictionary that produce a certain input string.
+A Unicode-aware no_std crate (requires alloc) that rapidly finds all sequences of
+dictionary words that concatenate to a given string.
 """
 license = "Apache-2.0 OR MIT"
 documentation = "https://docs.rs/wordbreaker"
