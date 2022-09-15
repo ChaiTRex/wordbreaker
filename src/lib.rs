@@ -379,7 +379,8 @@ where
                             self.grapheme_bounds = Vec::new();
                             self.stack = Vec::new();
                             return Some({
-                                core::mem::take(&mut self.prefix)
+                                #[allow(clippy::mem_replace_with_default)]
+                                core::mem::replace(&mut self.prefix, Vec::new())
                                     .into_iter()
                                     .map(|range| &self.input[range])
                                     .collect::<Vec<_>>()
