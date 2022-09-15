@@ -11,6 +11,7 @@ extern crate alloc;
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::ops::Range;
 use fst::raw::{Fst, Node};
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::GraphemeCursor;
@@ -211,7 +212,7 @@ where
     /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     #[inline(always)]
-    pub fn concatenations_for<'d>(&'d self, input: &str) -> Concatenations<'d, D> {
+    pub fn concatenations_for<'d, 's>(&'d self, input: &'s str) -> Concatenations<'d, 's, D> {
         Concatenations::new(self, input)
     }
 }
@@ -269,61 +270,63 @@ where
 /// The <code>[Iterator](core::iter::Iterator)</code> that
 /// <code>[Dictionary](crate::Dictionary)::[concatenations_for](crate::Dictionary::concatenations_for)</code>
 /// produces.
-pub struct Concatenations<'d, D>
+pub struct Concatenations<'d, 's, D>
 where
     D: AsRef<[u8]>,
 {
     dictionary: &'d Fst<D>,
-    input: String,
+    input: &'s str,
     stack: Vec<StackFrame<'d>>,
-    prefix: Vec<String>,
+    prefix: Vec<Range<usize>>,
 }
 
-impl<'d, D> Concatenations<'d, D>
+impl<'d, 's, D> Concatenations<'d, 's, D>
 where
     D: AsRef<[u8]>,
 {
-    fn new(dictionary: &'d Dictionary<D>, input: &str) -> Self {
+    fn new(dictionary: &'d Dictionary<D>, input: &'s str) -> Self {
         let dictionary = &dictionary.fst;
 
         Self {
             dictionary,
-            input: input.chars().nfd().collect::<String>(),
+            input,
             stack: vec![StackFrame {
                 grapheme_cursor: GraphemeCursor::new(0, input.len(), true),
                 current_node: dictionary.root(),
             }],
-            prefix: vec![String::new()],
+            prefix: vec![0..0],
         }
     }
 }
 
-impl<'d, D> Iterator for Concatenations<'d, D>
+impl<'d, 's, D> Iterator for Concatenations<'d, 's, D>
 where
     D: AsRef<[u8]>,
 {
-    type Item = Vec<String>;
+    type Item = Vec<&'s str>;
 
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some(mut stack_frame) = self.stack.pop() {
             let grapheme_start = stack_frame.grapheme_cursor.cur_cursor();
-            if let Ok(Some(grapheme_end)) =
-                stack_frame.grapheme_cursor.next_boundary(&self.input, 0)
+            if let Ok(Some(grapheme_end)) = stack_frame.grapheme_cursor.next_boundary(self.input, 0)
             {
-                let grapheme = &self.input[grapheme_start..grapheme_end];
+                self.prefix.last_mut().unwrap().end = grapheme_end;
 
-                self.prefix.last_mut().unwrap().push_str(grapheme);
-                for byte in grapheme.bytes() {
-                    let transition_index = match stack_frame.current_node.find_input(byte) {
-                        Some(index) => index,
-                        None => {
-                            self.prefix.pop();
-                            continue 'outer;
-                        }
-                    };
-                    stack_frame.current_node = self
-                        .dictionary
-                        .node(stack_frame.current_node.transition(transition_index).addr);
+                let grapheme = &self.input[grapheme_start..grapheme_end];
+                for char in grapheme.nfd() {
+                    let mut char_utf8 = [0_u8; 4];
+                    for byte in char.encode_utf8(&mut char_utf8).bytes() {
+                        let transition_index = match stack_frame.current_node.find_input(byte) {
+                            Some(index) => index,
+                            None => {
+                                self.prefix.pop();
+                                continue 'outer;
+                            }
+                        };
+                        stack_frame.current_node = self
+                            .dictionary
+                            .node(stack_frame.current_node.transition(transition_index).addr);
+                    }
                 }
 
                 if stack_frame.current_node.is_final() {
@@ -332,16 +335,25 @@ where
                             // We're done, so drop all owned values now, replacing them
                             // with unallocated values, in case the programmer keeps
                             // this iterator around.
-                            self.input = String::new();
                             self.stack = Vec::new();
-                            return Some(core::mem::take(&mut self.prefix));
+                            return Some({
+                                core::mem::take(&mut self.prefix)
+                                    .into_iter()
+                                    .map(|range| &self.input[range])
+                                    .collect::<Vec<_>>()
+                            });
                         } else {
-                            let next = self.prefix.clone();
+                            let next = self
+                                .prefix
+                                .iter()
+                                .cloned()
+                                .map(|range| &self.input[range])
+                                .collect::<Vec<_>>();
                             self.prefix.pop();
                             return Some(next);
                         }
                     } else {
-                        self.prefix.push(String::new());
+                        self.prefix.push(grapheme_end..grapheme_end);
 
                         let grapheme_cursor_clone = stack_frame.grapheme_cursor.clone();
                         self.stack.push(stack_frame);
@@ -358,7 +370,6 @@ where
                     // We're done, so drop all owned values now, replacing them with
                     // unallocated values, in case the programmer keeps this iterator
                     // around.
-                    self.input = String::new();
                     self.stack = Vec::new();
                     self.prefix = Vec::new();
                     return Some(Vec::new());
