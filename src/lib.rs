@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 use core::ops::Range;
 use fst::raw::{Fst, Node};
 use unicode_normalization::UnicodeNormalization;
-use unicode_segmentation::GraphemeCursor;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[doc(inline)]
 pub use fst::raw::Error;
@@ -276,6 +276,8 @@ where
 {
     dictionary: &'d Fst<D>,
     input: &'s str,
+    input_nfd: String,
+    grapheme_bounds: Vec<GraphemeBounds>,
     stack: Vec<StackFrame<'d>>,
     prefix: Vec<Range<usize>>,
 }
@@ -286,12 +288,45 @@ where
 {
     fn new(dictionary: &'d Dictionary<D>, input: &'s str) -> Self {
         let dictionary = &dictionary.fst;
+        let input_nfd = input.nfd().collect::<String>();
+        let input_grapheme_ends =
+            input
+                .graphemes(true)
+                .map(|grapheme| grapheme.len())
+                .scan(0_usize, |prev, this| {
+                    *prev = (*prev).wrapping_add(this);
+                    Some(*prev)
+                });
+        let input_nfd_grapheme_ends = input_nfd
+            .graphemes(true)
+            .map(|grapheme| grapheme.len())
+            .scan(0_usize, |prev, this| {
+                *prev = (*prev).wrapping_add(this);
+                Some(*prev)
+            });
+        let grapheme_bounds = core::iter::once({
+            GraphemeBounds {
+                input_index: 0,
+                input_nfd_index: 0,
+            }
+        })
+        .chain({
+            input_grapheme_ends.zip(input_nfd_grapheme_ends).map(
+                |(input_index, input_nfd_index)| GraphemeBounds {
+                    input_index,
+                    input_nfd_index,
+                },
+            )
+        })
+        .collect::<Vec<_>>();
 
         Self {
             dictionary,
             input,
+            input_nfd,
+            grapheme_bounds,
             stack: vec![StackFrame {
-                grapheme_cursor: GraphemeCursor::new(0, input.len(), true),
+                grapheme_end_index: 1,
                 current_node: dictionary.root(),
             }],
             prefix: vec![0..0],
@@ -307,34 +342,41 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some(mut stack_frame) = self.stack.pop() {
-            let grapheme_start = stack_frame.grapheme_cursor.cur_cursor();
-            if let Ok(Some(grapheme_end)) = stack_frame.grapheme_cursor.next_boundary(self.input, 0)
-            {
-                self.prefix.last_mut().unwrap().end = grapheme_end;
+            if stack_frame.grapheme_end_index < self.grapheme_bounds.len() {
+                let input_nfd_grapheme_start = self.grapheme_bounds
+                    [stack_frame.grapheme_end_index.wrapping_sub(1)]
+                .input_nfd_index;
+                let GraphemeBounds {
+                    input_index: input_grapheme_end,
+                    input_nfd_index: input_nfd_grapheme_end,
+                } = self.grapheme_bounds[stack_frame.grapheme_end_index];
+                stack_frame.grapheme_end_index = stack_frame.grapheme_end_index.wrapping_add(1);
 
-                let grapheme = &self.input[grapheme_start..grapheme_end];
-                for char in grapheme.nfd() {
-                    let mut char_utf8 = [0_u8; 4];
-                    for byte in char.encode_utf8(&mut char_utf8).bytes() {
-                        let transition_index = match stack_frame.current_node.find_input(byte) {
-                            Some(index) => index,
-                            None => {
-                                self.prefix.pop();
-                                continue 'outer;
-                            }
-                        };
-                        stack_frame.current_node = self
-                            .dictionary
-                            .node(stack_frame.current_node.transition(transition_index).addr);
-                    }
+                self.prefix.last_mut().unwrap().end = input_grapheme_end;
+
+                for byte in self.input_nfd[input_nfd_grapheme_start..input_nfd_grapheme_end].bytes()
+                {
+                    let transition_index = match stack_frame.current_node.find_input(byte) {
+                        Some(index) => index,
+                        None => {
+                            self.prefix.pop();
+                            continue 'outer;
+                        }
+                    };
+                    stack_frame.current_node = self
+                        .dictionary
+                        .node(stack_frame.current_node.transition(transition_index).addr);
                 }
 
                 if stack_frame.current_node.is_final() {
-                    if grapheme_end == self.input.len() {
+                    if input_grapheme_end == self.input.len() {
                         if self.stack.is_empty() {
                             // We're done, so drop all owned values now, replacing them
                             // with unallocated values, in case the programmer keeps
                             // this iterator around.
+
+                            self.input_nfd = String::new();
+                            self.grapheme_bounds = Vec::new();
                             self.stack = Vec::new();
                             return Some({
                                 core::mem::take(&mut self.prefix)
@@ -353,12 +395,12 @@ where
                             return Some(next);
                         }
                     } else {
-                        self.prefix.push(grapheme_end..grapheme_end);
+                        self.prefix.push(input_grapheme_end..input_grapheme_end);
 
-                        let grapheme_cursor_clone = stack_frame.grapheme_cursor.clone();
+                        let grapheme_end_index = stack_frame.grapheme_end_index;
                         self.stack.push(stack_frame);
                         self.stack.push(StackFrame {
-                            grapheme_cursor: grapheme_cursor_clone,
+                            grapheme_end_index,
                             current_node: self.dictionary.root(),
                         });
                     }
@@ -370,6 +412,9 @@ where
                     // We're done, so drop all owned values now, replacing them with
                     // unallocated values, in case the programmer keeps this iterator
                     // around.
+
+                    self.input_nfd = String::new();
+                    self.grapheme_bounds = Vec::new();
                     self.stack = Vec::new();
                     self.prefix = Vec::new();
                     return Some(Vec::new());
@@ -382,8 +427,13 @@ where
     }
 }
 
+struct GraphemeBounds {
+    input_index: usize,
+    input_nfd_index: usize,
+}
+
 struct StackFrame<'d> {
-    grapheme_cursor: GraphemeCursor,
+    grapheme_end_index: usize,
     current_node: Node<'d>,
 }
 
@@ -415,6 +465,18 @@ mod tests {
 
         assert!(ways_to_concatenate.len() == 1);
         assert!(ways_to_concatenate[0].is_empty());
+    }
+
+    #[test]
+    fn from_bytes_verified_test() {
+        let first_dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
+        let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
+
+        let dictionary = Dictionary::from_bytes_verified(first_dictionary_bytes).unwrap();
+        let mut ways_to_concatenate = dictionary.concatenations_for("justice").collect::<Vec<_>>();
+
+        ways_to_concatenate.sort_unstable();
+        assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
     }
 
     #[test]
