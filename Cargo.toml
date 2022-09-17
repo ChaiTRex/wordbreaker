@@ -15,8 +15,8 @@ keywords = ["concatenation", "dictionary", "text"]
 categories = ["no-std", "text-processing"]
 
 [dependencies]
-fst = "0.4"
-unicode-normalization = { version = "0.1.21", default-features = false }
+fst = "0.4.7"
+unicode-normalization = { version = "0.1.22", default-features = false }
 unicode-segmentation = "1.10.0"
 with-bench = { package = "criterion", version = "0.4", optional = true }
 
