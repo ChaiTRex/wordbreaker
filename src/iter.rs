@@ -10,6 +10,7 @@ use crate::Dictionary;
 /// The <code>[Iterator](core::iter::Iterator)</code> that
 /// <code>[Dictionary](crate::Dictionary)::[concatenations_for](crate::Dictionary::concatenations_for)</code>
 /// produces.
+#[derive(Clone)]
 pub struct Concatenations<'d, 's, D>
 where
     D: AsRef<[u8]>,
@@ -168,11 +169,13 @@ where
     }
 }
 
+#[derive(Clone)]
 struct GraphemeBounds {
     input_index: usize,
     input_nfd_index: usize,
 }
 
+#[derive(Clone)]
 struct StackFrame<'d> {
     grapheme_end_index: usize,
     current_node: Node<'d>,

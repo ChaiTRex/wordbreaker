@@ -18,3 +18,8 @@ categories = ["no-std", "text-processing"]
 fst = "0.4"
 unicode-normalization = { version = "0.1.21", default-features = false }
 unicode-segmentation = "1.10.0"
+with-bench = { package = "criterion", version = "0.4", optional = true }
+
+[[bench]]
+name = "benches"
+harness = false
