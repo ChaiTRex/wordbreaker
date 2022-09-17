@@ -81,6 +81,33 @@ where
 {
     type Item = Vec<&'s str>;
 
+    /*
+    /* Nightly
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        // TODO: When this is stabilized, move `.nth(n)` code here and base `.nth()` on
+        // this method.
+    }
+    */
+
+    fn count(mut self) -> usize {
+        todo!()
+    }
+
+    fn last(mut self) -> Option<Self::Item> {
+        todo!()
+    }
+
+    #[inline(always)]
+    fn max(mut self) -> Option<Self::Item> {
+        self.last()
+    }
+
+    #[inline(always)]
+    fn min(mut self) -> Option<Self::Item> {
+        self.next()
+    }
+    */
+
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some(mut stack_frame) = self.stack.pop() {
             if stack_frame.grapheme_end_index < self.grapheme_bounds.len() {
@@ -167,7 +194,21 @@ where
 
         None
     }
+
+    /*
+    /* Nightly
+    fn is_sorted(self) -> bool {
+        true
+    }
+    */
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        todo!()
+    }
+    */
 }
+
+impl<'d, 's, D> core::iter::FusedIterator for Concatenations<'d, 's, D> where D: AsRef<[u8]> {}
 
 #[derive(Clone)]
 struct GraphemeBounds {
