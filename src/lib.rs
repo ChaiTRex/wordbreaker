@@ -39,6 +39,19 @@ mod tests {
     }
 
     #[test]
+    fn count_matches_repeated_next_test() {
+        let dictionary = include_str!("../american-english-dictionary.txt")
+            .lines()
+            .collect::<Dictionary<_>>();
+        let concatenations = dictionary.concatenations_for("thequickbrownfoxjumpsoverthelazydog");
+
+        let count = concatenations.clone().count();
+        let next_count = concatenations.map(|_| 1).sum::<usize>();
+
+        assert_eq!(count, next_count);
+    }
+
+    #[test]
     fn empty_input_test() {
         let dictionary = Dictionary::new(&["b"]);
         let ways_to_concatenate = dictionary.concatenations_for("").collect::<Vec<_>>();

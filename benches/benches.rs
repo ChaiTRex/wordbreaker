@@ -27,10 +27,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         .next()
         .unwrap();
     let no_solutions_dictionary = ('a'..='z')
-        .map(|ch| {
-            core::iter::repeat(ch)
-                .take(coprime_length)
-                .collect::<String>()
+        .flat_map(|ch| {
+            (coprime_length..coprime_length + target.len())
+                .step_by(coprime_length)
+                .map(move |length| core::iter::repeat(ch).take(length).collect::<String>())
         })
         .collect::<Dictionary<_>>();
     let easy_no_solutions_target = target
@@ -89,6 +89,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("concatenations_next", |b| {
+        b.iter(|| black_box(concatenations_iter.clone()).next())
+    });
+
+    c.bench_function("concatenations_next_100", |b| {
         b.iter(|| {
             let mut iter = black_box(concatenations_iter.clone());
             for _ in 0..99 {
