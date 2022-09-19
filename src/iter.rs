@@ -629,7 +629,10 @@ where
                 .len()
                 .checked_sub(1)
                 .map(|grapheme_border_count| {
-                    if grapheme_border_count < usize::BITS as usize {
+                    // Needed instead of usize::BITS because MSRV is 1.36 and usize::BITS didn't exist then
+                    const USIZE_BITS: usize = 0_usize.count_zeros() as usize;
+
+                    if grapheme_border_count < USIZE_BITS {
                         (0, Some(1 << grapheme_border_count))
                     } else {
                         (0, None)
