@@ -98,6 +98,9 @@ fn criterion_benchmark(c: &mut Criterion) {
             for _ in 0..99 {
                 iter.next();
             }
+            // Returned outside the loop to ensure that the compiler doesn't decide that
+            // the values aren't used and that it can eliminate the generation of the
+            // values.
             iter.next()
         })
     });

@@ -79,4 +79,21 @@ mod tests {
 
         assert!(ways_to_concatenate.is_empty());
     }
+
+    #[test]
+    fn nth_test() {
+        let dictionary = include_str!("../american-english-dictionary.txt")
+            .lines()
+            .collect::<Dictionary<_>>();
+        let expected_concatenation = dictionary
+            .concatenations_for("thequickbrownfoxjumpsoverthelazydog")
+            .nth(71257);
+
+        assert_eq!(
+            expected_concatenation,
+            Some(vec![
+                "the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"
+            ]),
+        );
+    }
 }
