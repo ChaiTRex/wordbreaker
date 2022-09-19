@@ -178,17 +178,19 @@ where
     fn last(mut self) -> Option<Self::Item> {
         todo!()
     }
+    */
 
     #[inline(always)]
-    fn max(mut self) -> Option<Self::Item> {
+    fn max(self) -> Option<Self::Item> {
+        // The iterator is sorted, so the maximum remaining element will be the last one.
         self.last()
     }
 
     #[inline(always)]
     fn min(mut self) -> Option<Self::Item> {
+        // The iterator is sorted, so the minimum remaining element will be the next one.
         self.next()
     }
-    */
 
     fn next(&mut self) -> Option<Self::Item> {
         // While there are still available stack frames:
