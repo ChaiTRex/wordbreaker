@@ -1,6 +1,6 @@
 [package]
 name = "wordbreaker"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 description = """
 A Unicode-aware no_std crate (requires alloc) that rapidly finds all sequences of
@@ -15,9 +15,9 @@ keywords = ["concatenation", "dictionary", "text"]
 categories = ["no-std", "text-processing"]
 
 [dependencies]
-fst = "0.4.7"
-unicode-normalization = { version = "0.1.22", default-features = false }
-unicode-segmentation = "1.10.0"
+fst = "0.4"
+unicode-normalization = { version = "0.1", default-features = false }
+unicode-segmentation = "1.10"
 with-bench = { package = "criterion", version = "0.4", optional = true }
 
 [[bench]]
