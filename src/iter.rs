@@ -165,8 +165,18 @@ where
                 // If, after the current grapheme is followed in the Dictionary, a word
                 // ends here, and there are no NFD graphemes left:
                 } else {
+                    #[cfg(debug_assertions)]
+                    {
+                        result = result.checked_add(1).expect(
+                            "The intended result from `Concatenations::count` has overflowed",
+                        );
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        result = result.wrapping_add(1);
+                    }
+
                     // Backtrack.
-                    result = result.wrapping_add(1);
                 }
             }
         }
