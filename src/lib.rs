@@ -73,6 +73,28 @@ mod tests {
     }
 
     #[test]
+    fn last_matches_repeated_next_test() {
+        let dictionary = include_str!("../american-english-dictionary.txt")
+            .lines()
+            .collect::<Dictionary<_>>();
+        let mut concatenations =
+            dictionary.concatenations_for("thequickbrownfoxjumpsoverthelazydog");
+
+        let last = concatenations.clone().last();
+        let mut next_last = None;
+        loop {
+            let next = concatenations.next();
+            if next.is_some() {
+                next_last = next;
+            } else {
+                break;
+            }
+        }
+
+        assert_eq!(last, next_last);
+    }
+
+    #[test]
     fn no_matching_concatenations_test() {
         let dictionary = Dictionary::new(&["b"]);
         let ways_to_concatenate = dictionary.concatenations_for("a").collect::<Vec<_>>();
