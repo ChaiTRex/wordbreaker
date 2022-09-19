@@ -600,7 +600,6 @@ where
         None
     }
 
-    /*
     /* Nightly
     fn is_sorted(self) -> bool {
         true
@@ -608,9 +607,27 @@ where
     */
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        todo!()
+        // If we're done producing all concatenations, there are zero more elements:
+        if self.stack.is_empty() {
+            (0, Some(0))
+        // Otherwise, if the input is empty, there is exactly one concatenation.
+        // Otherwise, the borders between graphemes can either be a word separation
+        // point or not, meaning there are 2ⁿ⁻¹ possible elements, where n is the number
+        // of graphemes:
+        } else {
+            self.grapheme_bounds
+                .len()
+                .checked_sub(1)
+                .map(|grapheme_border_count| {
+                    if grapheme_border_count < usize::BITS as usize {
+                        (0, Some(1 << grapheme_border_count))
+                    } else {
+                        (0, None)
+                    }
+                })
+                .unwrap_or((1, Some(1)))
+        }
     }
-    */
 }
 
 impl<'d, 's, D> core::iter::FusedIterator for Concatenations<'d, 's, D> where D: AsRef<[u8]> {}

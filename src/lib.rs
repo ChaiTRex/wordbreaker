@@ -24,11 +24,10 @@ mod tests {
     #[test]
     fn abcdef_test() {
         let dictionary = Dictionary::new(&["ab", "abc", "cd", "def", "abcd", "ef", "c"]);
-        let mut ways_to_concatenate = dictionary.concatenations_for("abcdef").collect::<Vec<_>>();
+        let concatenations = dictionary.concatenations_for("abcdef");
 
-        ways_to_concatenate.sort_unstable();
         assert_eq!(
-            ways_to_concatenate,
+            concatenations.clone().collect::<Vec<_>>(),
             [
                 vec!["ab", "c", "def"],
                 vec!["ab", "cd", "ef"],
@@ -36,6 +35,20 @@ mod tests {
                 vec!["abcd", "ef"]
             ]
         );
+        assert_eq!(concatenations.clone().count(), 4);
+        assert_eq!(concatenations.clone().last(), Some(vec!["abcd", "ef"]));
+        assert_eq!(concatenations.clone().min(), Some(vec!["ab", "c", "def"]));
+        assert_eq!(concatenations.clone().max(), Some(vec!["abcd", "ef"]));
+        {
+            let mut concatenations = concatenations.clone();
+            assert_eq!(concatenations.next(), Some(vec!["ab", "c", "def"]));
+            assert_eq!(concatenations.next(), Some(vec!["ab", "cd", "ef"]));
+            assert_eq!(concatenations.next(), Some(vec!["abc", "def"]));
+            assert_eq!(concatenations.next(), Some(vec!["abcd", "ef"]));
+            assert_eq!(concatenations.next(), None);
+        }
+        assert_eq!(concatenations.clone().nth(2), Some(vec!["abc", "def"]));
+        assert_eq!(concatenations.clone().nth(4), None);
     }
 
     #[test]
@@ -54,10 +67,23 @@ mod tests {
     #[test]
     fn empty_input_test() {
         let dictionary = Dictionary::new(&["b"]);
-        let ways_to_concatenate = dictionary.concatenations_for("").collect::<Vec<_>>();
+        let concatenations = dictionary.concatenations_for("");
 
-        assert!(ways_to_concatenate.len() == 1);
-        assert!(ways_to_concatenate[0].is_empty());
+        assert_eq!(
+            concatenations.clone().collect::<Vec<_>>(),
+            [Vec::<&'static str>::new()]
+        );
+        assert_eq!(concatenations.clone().count(), 1);
+        assert_eq!(concatenations.clone().last(), Some(vec![]));
+        assert_eq!(concatenations.clone().min(), Some(vec![]));
+        assert_eq!(concatenations.clone().max(), Some(vec![]));
+        {
+            let mut concatenations = concatenations.clone();
+            assert_eq!(concatenations.next(), Some(vec![]));
+            assert_eq!(concatenations.next(), None);
+        }
+        assert_eq!(concatenations.clone().nth(0), Some(vec![]));
+        assert_eq!(concatenations.clone().nth(1), None);
     }
 
     #[test]
@@ -97,9 +123,15 @@ mod tests {
     #[test]
     fn no_matching_concatenations_test() {
         let dictionary = Dictionary::new(&["b"]);
-        let ways_to_concatenate = dictionary.concatenations_for("a").collect::<Vec<_>>();
+        let concatenations = dictionary.concatenations_for("a");
 
-        assert!(ways_to_concatenate.is_empty());
+        assert!(concatenations.clone().collect::<Vec<_>>().is_empty());
+        assert_eq!(concatenations.clone().count(), 0);
+        assert_eq!(concatenations.clone().last(), None);
+        assert_eq!(concatenations.clone().min(), None);
+        assert_eq!(concatenations.clone().max(), None);
+        assert_eq!(concatenations.clone().next(), None);
+        assert_eq!(concatenations.clone().nth(0), None);
     }
 
     #[test]
