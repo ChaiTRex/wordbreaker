@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use fst::raw::Fst;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::Concatenations;
+use crate::WordSegmentations;
 
 pub use fst::raw::Error;
 
-/// Stores a dictionary's words so that concatenation finding is speedy. Canonicalizes
-/// the Unicode to NFD form.
+/// Stores a dictionary's words so that word segmentation is speedy. Canonicalizes the
+/// Unicode to NFD form.
 ///
 /// <code>D</code> is the backing storage for the dictionary, which must implement
 /// <code>[AsRef](core::convert::AsRef)&lt;&#91;[u8](core::primitive::u8)&#93;&gt;</code>.
@@ -24,7 +24,7 @@ impl Dictionary<Vec<u8>> {
     /// from its <code>words</code>.
     ///
     /// <b>Note:</b> capitalization is preserved, so the words "Arrow" and "box" will
-    /// not concatenate to "arrowbox".
+    /// not be a valid segmentation of "arrowbox".
     ///
     /// # Examples
     ///
@@ -32,14 +32,14 @@ impl Dictionary<Vec<u8>> {
     /// use wordbreaker::Dictionary;
     ///
     /// let dictionary = ["hello", "just", "ice", "justice"]
-    ///     .into_iter()
+    ///     .iter()
     ///     .collect::<Dictionary<_>>();
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     #[inline]
     pub fn new<S>(words: &[S]) -> Self
@@ -80,12 +80,12 @@ where
     /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
     ///
     /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
@@ -119,12 +119,12 @@ where
     /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
     ///
     /// let dictionary = Dictionary::from_bytes(first_dictionary_bytes).unwrap();
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn from_bytes(bytes: D) -> Result<Dictionary<D>, Error> {
         match Fst::new(bytes) {
@@ -161,12 +161,12 @@ where
     /// let first_dictionary_bytes = first_dictionary.as_bytes().to_vec();
     ///
     /// let dictionary = Dictionary::from_bytes_verified(first_dictionary_bytes).unwrap();
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     pub fn from_bytes_verified(bytes: D) -> Result<Dictionary<D>, Error> {
         match Fst::new(bytes).and_then(|fst| {
@@ -179,12 +179,11 @@ where
         }
     }
 
-    /// Finds all concatenations of words in this
-    /// <code>[Dictionary](crate::Dictionary)</code> that produce the <code>input</code>
-    /// string.
+    /// Finds all segmentations into <code>[Dictionary](crate::Dictionary)</code> words
+    /// of the given <code>input</code> string.
     ///
     /// <b>Note:</b> capitalization is preserved, so the words "Arrow" and "box" will
-    /// not concatenate to "arrowbox".
+    /// not be a valid segmentation of "arrowbox".
     ///
     /// # Examples
     ///
@@ -192,16 +191,16 @@ where
     /// use wordbreaker::Dictionary;
     ///
     /// let dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     #[inline(always)]
-    pub fn concatenations_for<'d, 's>(&'d self, input: &'s str) -> Concatenations<'d, 's, D> {
-        Concatenations::new(self, input)
+    pub fn word_segmentations<'s>(&self, input: &'s str) -> WordSegmentations<'s> {
+        WordSegmentations::new(self, input)
     }
 }
 
@@ -214,7 +213,7 @@ where
     /// from an <code>[Iterator](core::iter::Iterator)</code> over strings.
     ///
     /// <b>Note:</b> capitalization is preserved, so the words "Arrow" and "box" will
-    /// not concatenate to "arrowbox".
+    /// not be a valid segmentation of "arrowbox".
     ///
     /// # Examples
     ///
@@ -222,14 +221,14 @@ where
     /// use wordbreaker::Dictionary;
     ///
     /// let dictionary = ["hello", "just", "ice", "justice"]
-    ///     .into_iter()
+    ///     .iter()
     ///     .collect::<Dictionary<_>>();
-    /// let mut ways_to_concatenate = dictionary
-    ///     .concatenations_for("justice")
+    /// let mut word_segmentations = dictionary
+    ///     .word_segmentations("justice")
     ///     .collect::<Vec<_>>();
     ///
-    /// ways_to_concatenate.sort_unstable();
-    /// assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+    /// word_segmentations.sort_unstable();
+    /// assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
     /// ```
     fn from_iter<I>(words: I) -> Self
     where

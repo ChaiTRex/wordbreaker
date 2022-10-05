@@ -1,5 +1,5 @@
 `wordbreaker` is a Unicode-aware `no_std` crate (requires [`alloc`](alloc)) that rapidly
-finds all sequences of dictionary words that concatenate to a given string.
+finds all ways of segmenting a given string into words from a given dictionary.
 
 # Example
 
@@ -7,10 +7,10 @@ finds all sequences of dictionary words that concatenate to a given string.
 use wordbreaker::Dictionary;
 
 let dictionary = Dictionary::new(&["hello", "just", "ice", "justice"]);
-let mut ways_to_concatenate = dictionary
-    .concatenations_for("justice")
+let mut word_segmentations = dictionary
+    .word_segmentations("justice")
     .collect::<Vec<_>>();
+word_segmentations.sort_unstable();
 
-ways_to_concatenate.sort_unstable();
-assert_eq!(ways_to_concatenate, [vec!["just", "ice"], vec!["justice"]]);
+assert_eq!(word_segmentations, [vec!["just", "ice"], vec!["justice"]]);
 ```

@@ -11,10 +11,11 @@ documentation = "https://docs.rs/wordbreaker"
 homepage = "https://crates.io/crates/wordbreaker"
 repository = "https://github.com/ChaiTRex/wordbreaker"
 authors = ["Chai T. Rex <ChaiTRex@users.noreply.github.com>"]
-keywords = ["concatenation", "dictionary", "text"]
+keywords = ["concatenation", "dictionary", "segmentation", "text", "word"]
 categories = ["no-std", "text-processing"]
 
 [dependencies]
+bitvec = { version = "1.0", default-features = false, features = ["alloc"] }
 fst = "0.4"
 unicode-normalization = { version = "0.1", default-features = false }
 unicode-segmentation = "1.10"

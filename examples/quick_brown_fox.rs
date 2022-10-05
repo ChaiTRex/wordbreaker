@@ -6,7 +6,7 @@ fn main() {
         .collect::<Dictionary<_>>();
 
     let phrase = dictionary
-        .concatenations_for("thequickbrownfoxjumpsoverthelazydog")
+        .word_segmentations("thequickbrownfoxjumpsoverthelazydog")
         .nth(71257)
         .unwrap()
         .join(" ");
